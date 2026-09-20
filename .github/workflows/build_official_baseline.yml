@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /cannon/toolchains
-          key: cannon-aosp-clang-r450784d-gcc49-v1
+          key: cannon-aosp-clang-r383902-gcc49-v1
 
       - name: Prepare source, toolchains and AnyKernel3
         run: |
@@ -109,7 +109,7 @@ jobs:
           if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
             mkdir -p /cannon/toolchains/clang /cannon/toolchains/gcc64 /cannon/toolchains/gcc32
             curl -fL --retry 5 \
-              https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/a71fa4c09d7109d611ee63964fc9fca58fee38cd/clang-r450784d.tar.gz \
+              https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-11.0.0_r1/clang-r383902.tar.gz \
               | tar -xz -C /cannon/toolchains/clang
             curl -fL --retry 5 \
               https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz \
