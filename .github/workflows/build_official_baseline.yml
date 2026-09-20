@@ -54,6 +54,11 @@ jobs:
           ln -sfn /cannon/toolchains/clang /cannon/clang
           ln -sfn /cannon/toolchains/gcc64 /cannon/gcc64
           ln -sfn /cannon/toolchains/gcc32 /cannon/gcc32
+          mkdir -p /cannon/cross64
+          for tool in /usr/bin/aarch64-linux-gnu-*; do
+            ln -sfn "$tool" "/cannon/cross64/$(basename "$tool")"
+          done
+          ln -sfn /usr/bin/aarch64-linux-gnu-as /cannon/cross64/as
 
           curl -fL --retry 5 \
             https://github.com/GTian5418/AnyKernel3/archive/refs/heads/cannon.zip \
