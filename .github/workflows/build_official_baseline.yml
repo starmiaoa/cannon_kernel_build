@@ -99,6 +99,13 @@ jobs:
           grep -Fq 'recv_char[2][UDI_FIFOSIZE * 2];' "$udi"
           sed -i 's/recv_char\[2\]\[UDI_FIFOSIZE \* 2\];/recv_char[2][UDI_FIFOSIZE * 2 + 1];/' "$udi"
 
+          # The public VCU Makefile places mtk_vcodec_mem.o in both a
+          # composite object and obj-y. Use the corrected one-object-each rule.
+          vcu_makefile=/cannon/kernel/drivers/media/platform/mtk-vcu/Makefile
+          grep -q '^mtk-vcu-y += mtk_vcu.o' "$vcu_makefile"
+          sed -i '/^mtk-vcu-y += mtk_vcu.o/,/^$/d' "$vcu_makefile"
+          sed -i 's/mtk-vcu\.o mtk_vcodec_mem\.o/mtk_vcu.o mtk_vcodec_mem.o/' "$vcu_makefile"
+
           if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
             mkdir -p /cannon/toolchains/clang /cannon/toolchains/gcc64 /cannon/toolchains/gcc32
             curl -fL --retry 5 \
