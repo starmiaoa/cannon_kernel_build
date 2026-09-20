@@ -1,0 +1,84 @@
+name: Cannon OriginOS4 exact-config baseline
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout build files
+        uses: actions/checkout@v4
+
+      - name: Checkout closest 4.14.186 kernel source
+        uses: actions/checkout@v4
+        with:
+          repository: xiaomi-mt6853-devs/android_kernel_xiaomi_cannon
+          ref: 979e649419ffb9dbdf2423d2751a0e6162638c81
+          fetch-depth: 1
+          path: kernel_tmp
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache flex libelf-dev libssl-dev lld unzip zip
+
+      - name: Restore toolchain cache
+        uses: actions/cache@v4
+        with:
+          path: /cannon/toolchains
+          key: cannon-aosp-clang-r450784d-gcc49-v1
+
+      - name: Prepare source, toolchains and AnyKernel3
+        run: |
+          set -euxo pipefail
+          sudo mkdir -p /cannon
+          sudo chown "$USER:$USER" /cannon
+          mv kernel_tmp /cannon/kernel
+          mkdir -p /cannon/toolchains
+
+          if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
+            mkdir -p /cannon/toolchains/clang /cannon/toolchains/gcc64 /cannon/toolchains/gcc32
+            curl -fL --retry 5 \
+              https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/a71fa4c09d7109d611ee63964fc9fca58fee38cd/clang-r450784d.tar.gz \
+              | tar -xz -C /cannon/toolchains/clang
+            curl -fL --retry 5 \
+              https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz \
+              | tar -xz -C /cannon/toolchains/gcc64
+            curl -fL --retry 5 \
+              https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz \
+              | tar -xz -C /cannon/toolchains/gcc32
+          fi
+
+          ln -sfn /cannon/toolchains/clang /cannon/clang
+          ln -sfn /cannon/toolchains/gcc64 /cannon/gcc64
+          ln -sfn /cannon/toolchains/gcc32 /cannon/gcc32
+
+          curl -fL --retry 5 \
+            https://github.com/GTian5418/AnyKernel3/archive/refs/heads/cannon.zip \
+            -o /tmp/anykernel.zip
+          unzip -q /tmp/anykernel.zip -d /tmp/anykernel
+          mkdir -p /cannon/Anykernel3
+          cp -a /tmp/anykernel/*/. /cannon/Anykernel3/
+
+          cp build.sh /cannon/build.sh
+          cp configs/originos4-working.config /cannon/originos4-working.config
+          chmod +x /cannon/build.sh
+
+      - name: Build stock baseline
+        run: |
+          set -o pipefail
+          /cannon/build.sh 2>&1 | tee /cannon/build.log
+
+      - name: Upload baseline artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cannon-OriginOS4-ExactConfig-Baseline
+          if-no-files-found: error
+          path: |
+            /cannon/Cannon-Stock-OriginOS4-ExactConfig.zip
+            /cannon/out/arch/arm64/boot/Image.gz
+            /cannon/originos4-working.config
+            /cannon/originos4-result.config
+            /cannon/originos4-config.diff
+            /cannon/build.log
