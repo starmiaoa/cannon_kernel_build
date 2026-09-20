@@ -20,6 +20,11 @@ COMMON_ARGS=(
   CROSS_COMPILE_ARM32=arm-linux-gnueabi-
   CC="ccache clang"
   LD=ld.lld
+  AR=llvm-ar
+  NM=llvm-nm
+  OBJCOPY=llvm-objcopy
+  OBJDUMP=llvm-objdump
+  STRIP=llvm-strip
 )
 
 mkdir -p "$OUT_DIR" "$CCACHE_DIR"
