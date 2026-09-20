@@ -29,6 +29,8 @@ jobs:
             drivers/misc/mediatek/teei/400
             drivers/misc/mediatek/gpu
             drivers/misc/mediatek/trusted_mem
+            drivers/misc/mediatek/base/power/gpufreq_v1
+            drivers/misc/mediatek/base/power/include/gpufreq_v1
             drivers/staging/android/ion/mtk
             drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i
 
@@ -60,6 +62,12 @@ jobs:
           rm -rf /cannon/kernel/drivers/misc/mediatek/gpu
           cp -a community_tmp/drivers/misc/mediatek/gpu \
             /cannon/kernel/drivers/misc/mediatek/
+          rm -rf /cannon/kernel/drivers/misc/mediatek/base/power/gpufreq_v1
+          cp -a community_tmp/drivers/misc/mediatek/base/power/gpufreq_v1 \
+            /cannon/kernel/drivers/misc/mediatek/base/power/
+          rm -rf /cannon/kernel/drivers/misc/mediatek/base/power/include/gpufreq_v1
+          cp -a community_tmp/drivers/misc/mediatek/base/power/include/gpufreq_v1 \
+            /cannon/kernel/drivers/misc/mediatek/base/power/include/
           rm -rf /cannon/kernel/drivers/misc/mediatek/trusted_mem
           cp -a community_tmp/drivers/misc/mediatek/trusted_mem \
             /cannon/kernel/drivers/misc/mediatek/
