@@ -42,7 +42,7 @@ make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
 cp "$OUT_DIR/.config" "$TOOLCHAIN/originos4-official-result.config"
 diff -u "$SOURCE_CONFIG" "$OUT_DIR/.config" > "$TOOLCHAIN/originos4-official-config.diff" || true
 
-make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" -j"$(nproc)" Image.gz
+make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" -k -j"$(nproc)" Image.gz
 test -s "$OUT_DIR/arch/arm64/boot/Image.gz"
 
 cd "$AK_DIR"
