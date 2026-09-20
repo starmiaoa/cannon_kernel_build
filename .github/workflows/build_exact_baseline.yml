@@ -71,10 +71,11 @@ jobs:
           /cannon/build.sh 2>&1 | tee /cannon/build.log
 
       - name: Upload baseline artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Cannon-OriginOS4-ExactConfig-Baseline
-          if-no-files-found: error
+          if-no-files-found: warn
           path: |
             /cannon/Cannon-Stock-OriginOS4-ExactConfig.zip
             /cannon/out/arch/arm64/boot/Image.gz

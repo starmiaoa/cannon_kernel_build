@@ -20,6 +20,7 @@ COMMON_ARGS=(
   CROSS_COMPILE_ARM32=arm-linux-androideabi-
   CC="ccache clang"
   LD=ld.lld
+  LLVM_IAS=1
 )
 
 mkdir -p "$OUT_DIR" "$CCACHE_DIR"
