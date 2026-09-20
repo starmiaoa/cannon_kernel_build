@@ -62,9 +62,10 @@ jobs:
           rm -rf /cannon/kernel/drivers/misc/mediatek/trusted_mem
           cp -a community_tmp/drivers/misc/mediatek/trusted_mem \
             /cannon/kernel/drivers/misc/mediatek/
-          rm -rf /cannon/kernel/drivers/staging/android/ion/mtk
-          cp -a community_tmp/drivers/staging/android/ion/mtk \
-            /cannon/kernel/drivers/staging/android/ion/
+          cp community_tmp/drivers/staging/android/ion/mtk/ion_sec_heap.c \
+            /cannon/kernel/drivers/staging/android/ion/mtk/ion_sec_heap.c
+          cp community_tmp/drivers/staging/android/ion/mtk/ion_sec_heap.h \
+            /cannon/kernel/drivers/staging/android/ion/mtk/ion_sec_heap.h
 
           # MiCode also omitted this generated FocalTech firmware include.
           mkdir -p /cannon/kernel/drivers/input/touchscreen/fts8719/include/firmware
