@@ -190,6 +190,12 @@ jobs:
           which ld.lld && echo "ld.lld found"
           which aarch64-linux-android-ld && echo "aarch64-linux-android-ld found"
 
+      - name: 立即保存工具链缓存
+        uses: actions/cache/save@v4
+        with:
+          path: /cannon/cache/toolchains.tar.gz
+          key: toolchains-ubuntu-22.04-v2
+
       - name: 复制并执行编译脚本
         run: |
           set -ex
