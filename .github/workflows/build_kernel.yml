@@ -43,7 +43,7 @@ jobs:
         with:
           repository: 'mvaisakh/kernel_xiaomi_cannon'
           ref: '506306ef3ae59f48a4ac7564b52e62bee48ce26b'
-          fetch-depth: 0
+          fetch-depth: 1
           path: kernel_tmp
 
       - name: Cache toolchains tarball
