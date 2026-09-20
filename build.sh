@@ -63,7 +63,7 @@ build_kernel() {
     mkdir -p "$OUT_DIR"
 
     echo "配置内核..."
-    if ! make -C "$KERNEL" O="$OUT_DIR" $COMMON_ARGS CC="ccache clang" cannon_defconfig; then
+    if ! make -C "$KERNEL" O="$OUT_DIR" $COMMON_ARGS CC="ccache clang" cannon_user_defconfig; then
         echo "❌ defconfig 失败"
         exit 1
     fi
