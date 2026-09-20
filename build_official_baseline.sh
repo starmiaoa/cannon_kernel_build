@@ -15,7 +15,7 @@ export KCFLAGS="-Wno-error=unused-but-set-variable -fno-builtin-stpcpy"
 
 COMMON_ARGS=(
   ARCH=arm64
-  CLANG_TRIPLE=aarch64-linux-gnu-
+  CLANG_TRIPLE=/usr/bin/aarch64-linux-gnu-
   CROSS_COMPILE=aarch64-linux-gnu-
   CROSS_COMPILE_ARM32=arm-linux-gnueabi-
   CC="ccache clang"
