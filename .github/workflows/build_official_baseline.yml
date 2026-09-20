@@ -93,6 +93,12 @@ jobs:
           grep -q 'TZCMD_MEM_CONFIG_CHUNKMEM_INFO_ION 34' "$ta_mem"
           sed -i '/TZCMD_MEM_CONFIG_CHUNKMEM_INFO_ION 34/a #define TZCMD_MEM_Query_SECUREMEM_INFO 35' "$ta_mem"
 
+          # %512s also writes a trailing NUL. Keep the full payload length and
+          # provide the extra byte, as done by newer MediaTek kernel trees.
+          udi=/cannon/kernel/drivers/misc/mediatek/udi/udi_v3/mtk_udi.c
+          grep -Fq 'recv_char[2][UDI_FIFOSIZE * 2];' "$udi"
+          sed -i 's/recv_char\[2\]\[UDI_FIFOSIZE \* 2\];/recv_char[2][UDI_FIFOSIZE * 2 + 1];/' "$udi"
+
           if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
             mkdir -p /cannon/toolchains/clang /cannon/toolchains/gcc64 /cannon/toolchains/gcc32
             curl -fL --retry 5 \
