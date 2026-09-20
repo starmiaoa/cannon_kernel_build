@@ -16,20 +16,14 @@ export KCFLAGS="-Wno-error=unused-but-set-variable -fno-builtin-stpcpy"
 COMMON_ARGS=(
   ARCH=arm64
   CLANG_TRIPLE=aarch64-linux-gnu-
-  CROSS_COMPILE=aarch64-linux-android-
-  CROSS_COMPILE_ARM32=arm-linux-androideabi-
+  CROSS_COMPILE=aarch64-linux-gnu-
+  CROSS_COMPILE_ARM32=arm-linux-gnueabi-
   CC="ccache clang"
   LD=ld.lld
-  LLVM_IAS=1
 )
 
 mkdir -p "$OUT_DIR" "$CCACHE_DIR"
 ccache -M 50G >/dev/null 2>&1 || true
-
-# This 4.14 tree forces an obsolete external GNU assembler even for Clang.
-# The original config enables full debug info, whose modern .file directives
-# require Clang's integrated assembler.
-sed -i '/CLANG_FLAGS.*-no-integrated-as/d' "$KERNEL/Makefile"
 
 cp "$SOURCE_CONFIG" "$OUT_DIR/.config"
 make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
