@@ -11,7 +11,7 @@ OUTPUT_ZIP=$TOOLCHAIN/Cannon-Stock-OriginOS4-OfficialSource.zip
 export PATH="$TOOLCHAIN/clang/bin:$TOOLCHAIN/gcc64/bin:$TOOLCHAIN/gcc32/bin:$PATH"
 export CCACHE_DIR="$TOOLCHAIN/.ccache"
 export USE_CCACHE=1
-export KCFLAGS="-Wno-error=unused-but-set-variable -fno-builtin-stpcpy"
+export KCFLAGS="-fno-builtin-stpcpy"
 
 COMMON_ARGS=(
   ARCH=arm64
