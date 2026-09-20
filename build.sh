@@ -14,8 +14,9 @@ export CCACHE_DIR="$TOOLCHAIN/.ccache"
 GCC64="aarch64-linux-android-"
 GCC32="arm-linux-androideabi-"
 export USE_CCACHE=1
+export KCFLAGS="-Wno-error=unused-but-set-variable -fno-builtin-stpcpy"
 COMMON_ARGS="ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=$GCC64"
-BUILD_ARGS="CROSS_COMPILE_ARM32=$GCC32 LD=ld.lld KCFLAGS=-Wno-error=unused-but-set-variable LOCALVERSION=-GinHalion"
+BUILD_ARGS="CROSS_COMPILE_ARM32=$GCC32 LD=ld.lld LOCALVERSION=-GinHalion"
 
 mkdir -p "$OUT_DIR" "$CCACHE_DIR"
 ccache -z > /dev/null 2>&1 || true
