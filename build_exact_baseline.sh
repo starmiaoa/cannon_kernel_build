@@ -36,6 +36,8 @@ make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
 # The shipping config leaves VOW's DSP selector empty. This public tree then
 # descends into an empty directory and never creates vow/built-in.o.
 "$KERNEL/scripts/config" --file "$OUT_DIR/.config" --disable MTK_VOW_SUPPORT
+"$KERNEL/scripts/config" --file "$OUT_DIR/.config" --enable LEDS_MTK_DISP
+"$KERNEL/scripts/config" --file "$OUT_DIR/.config" --enable NFC_PN553_DEVICES
 make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
 
 # Keep both configs so unsupported or mutated symbols are visible before flashing.
