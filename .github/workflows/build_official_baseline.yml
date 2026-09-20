@@ -63,6 +63,12 @@ jobs:
           cp community_tmp/drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i \
             /cannon/kernel/drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i
 
+          # Fix the 64-bit offset cast carried by the public vendor drop. The
+          # same-device AOSP-on-Cannon tree contains this exact correction.
+          freqhop=/cannon/kernel/drivers/misc/mediatek/freqhopping/mt6853/mtk_freqhopping_mcupm.c
+          grep -q 'g_reg_tr = g_fhctl_base + (unsigned int)reg_tr;' "$freqhop"
+          sed -i 's/(unsigned int)reg_tr/(unsigned long)reg_tr/' "$freqhop"
+
           if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
             mkdir -p /cannon/toolchains/clang /cannon/toolchains/gcc64 /cannon/toolchains/gcc32
             curl -fL --retry 5 \
