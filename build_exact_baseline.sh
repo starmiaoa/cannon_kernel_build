@@ -33,6 +33,11 @@ ccache -M 50G >/dev/null 2>&1 || true
 cp "$SOURCE_CONFIG" "$OUT_DIR/.config"
 make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
 
+# The shipping config leaves VOW's DSP selector empty. This public tree then
+# descends into an empty directory and never creates vow/built-in.o.
+"$KERNEL/scripts/config" --file "$OUT_DIR/.config" --disable MTK_VOW_SUPPORT
+make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
+
 # Keep both configs so unsupported or mutated symbols are visible before flashing.
 cp "$OUT_DIR/.config" "$TOOLCHAIN/originos4-result.config"
 diff -u "$SOURCE_CONFIG" "$OUT_DIR/.config" > "$TOOLCHAIN/originos4-config.diff" || true
