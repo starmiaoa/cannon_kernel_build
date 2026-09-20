@@ -28,6 +28,8 @@ jobs:
           sparse-checkout: |
             drivers/misc/mediatek/teei/400
             drivers/misc/mediatek/gpu/gpu_mali/mali_valhall/mali-r32p1
+            drivers/misc/mediatek/trusted_mem
+            drivers/staging/android/ion/mtk
             drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i
 
       - name: Install build dependencies
@@ -57,6 +59,12 @@ jobs:
             /cannon/kernel/drivers/misc/mediatek/teei/
           cp -a community_tmp/drivers/misc/mediatek/gpu/gpu_mali/mali_valhall/mali-r32p1 \
             /cannon/kernel/drivers/misc/mediatek/gpu/gpu_mali/mali_valhall/
+          rm -rf /cannon/kernel/drivers/misc/mediatek/trusted_mem
+          cp -a community_tmp/drivers/misc/mediatek/trusted_mem \
+            /cannon/kernel/drivers/misc/mediatek/
+          rm -rf /cannon/kernel/drivers/staging/android/ion/mtk
+          cp -a community_tmp/drivers/staging/android/ion/mtk \
+            /cannon/kernel/drivers/staging/android/ion/
 
           # MiCode also omitted this generated FocalTech firmware include.
           mkdir -p /cannon/kernel/drivers/input/touchscreen/fts8719/include/firmware
