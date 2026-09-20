@@ -87,6 +87,12 @@ jobs:
           grep -q 'g_reg_tr = g_fhctl_base + (unsigned int)reg_tr;' "$freqhop"
           sed -i 's/(unsigned int)reg_tr/(unsigned long)reg_tr/' "$freqhop"
 
+          # Newer trusted-memory uses command 35, while the official header
+          # retains command 30 needed by other cannon vendor components.
+          ta_mem=/cannon/kernel/drivers/misc/mediatek/geniezone/public/tz_cross/ta_mem.h
+          grep -q 'TZCMD_MEM_CONFIG_CHUNKMEM_INFO_ION 34' "$ta_mem"
+          sed -i '/TZCMD_MEM_CONFIG_CHUNKMEM_INFO_ION 34/a #define TZCMD_MEM_Query_SECUREMEM_INFO 35' "$ta_mem"
+
           if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
             mkdir -p /cannon/toolchains/clang /cannon/toolchains/gcc64 /cannon/toolchains/gcc32
             curl -fL --retry 5 \
