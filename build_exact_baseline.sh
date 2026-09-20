@@ -37,6 +37,7 @@ make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
 # descends into an empty directory and never creates vow/built-in.o.
 "$KERNEL/scripts/config" --file "$OUT_DIR/.config" --disable MTK_VOW_SUPPORT
 "$KERNEL/scripts/config" --file "$OUT_DIR/.config" --enable LEDS_MTK_DISP
+"$KERNEL/scripts/config" --file "$OUT_DIR/.config" --enable NFC
 "$KERNEL/scripts/config" --file "$OUT_DIR/.config" --enable NFC_PN553_DEVICES
 make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
 
