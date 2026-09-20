@@ -18,6 +18,18 @@ jobs:
           fetch-depth: 1
           path: kernel_tmp
 
+      - name: Checkout matching newer MediaTek subsystems
+        uses: actions/checkout@v4
+        with:
+          repository: xiaomi-mt6853-devs/android_kernel_xiaomi_cannon
+          ref: lineage-20
+          fetch-depth: 1
+          path: community_tmp
+          sparse-checkout: |
+            drivers/misc/mediatek/teei/400
+            drivers/misc/mediatek/gpu/gpu_mali/mali_valhall/mali-r32p1
+            drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i
+
       - name: Install build dependencies
         run: |
           sudo apt-get update
@@ -38,12 +50,18 @@ jobs:
           mv kernel_tmp /cannon/kernel
           mkdir -p /cannon/toolchains
 
-          # MiCode omitted this generated FocalTech firmware include. The
-          # community cannon tree carries it with an identical flash driver.
+          # The shipping configuration uses newer MediaTek components than
+          # MiCode's cannon-r-oss drop. Import the exact versions from the
+          # same-device community tree instead of mixing individual headers.
+          cp -a community_tmp/drivers/misc/mediatek/teei/400 \
+            /cannon/kernel/drivers/misc/mediatek/teei/
+          cp -a community_tmp/drivers/misc/mediatek/gpu/gpu_mali/mali_valhall/mali-r32p1 \
+            /cannon/kernel/drivers/misc/mediatek/gpu/gpu_mali/mali_valhall/
+
+          # MiCode also omitted this generated FocalTech firmware include.
           mkdir -p /cannon/kernel/drivers/input/touchscreen/fts8719/include/firmware
-          curl -fL --retry 5 \
-            https://raw.githubusercontent.com/xiaomi-mt6853-devs/android_kernel_xiaomi_cannon/lineage-20/drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i \
-            -o /cannon/kernel/drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i
+          cp community_tmp/drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i \
+            /cannon/kernel/drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i
 
           if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
             mkdir -p /cannon/toolchains/clang /cannon/toolchains/gcc64 /cannon/toolchains/gcc32
