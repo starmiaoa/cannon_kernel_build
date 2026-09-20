@@ -38,6 +38,13 @@ jobs:
           mv kernel_tmp /cannon/kernel
           mkdir -p /cannon/toolchains
 
+          # MiCode omitted this generated FocalTech firmware include. The
+          # community cannon tree carries it with an identical flash driver.
+          mkdir -p /cannon/kernel/drivers/input/touchscreen/fts8719/include/firmware
+          curl -fL --retry 5 \
+            https://raw.githubusercontent.com/xiaomi-mt6853-devs/android_kernel_xiaomi_cannon/lineage-20/drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i \
+            -o /cannon/kernel/drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i
+
           if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
             mkdir -p /cannon/toolchains/clang /cannon/toolchains/gcc64 /cannon/toolchains/gcc32
             curl -fL --retry 5 \
