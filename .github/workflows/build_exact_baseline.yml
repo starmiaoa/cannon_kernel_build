@@ -61,7 +61,7 @@ jobs:
           mkdir -p /cannon/Anykernel3
           cp -a /tmp/anykernel/*/. /cannon/Anykernel3/
 
-          cp build.sh /cannon/build.sh
+          cp build_exact_baseline.sh /cannon/build.sh
           cp configs/originos4-working.config /cannon/originos4-working.config
           chmod +x /cannon/build.sh
 
