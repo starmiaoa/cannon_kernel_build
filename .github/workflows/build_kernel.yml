@@ -41,7 +41,8 @@ jobs:
       - name: Checkout kernel repo (public)
         uses: actions/checkout@v4
         with:
-          repository: 'GinHalion/android_kernel_xiaomi_cannon'
+          repository: 'mvaisakh/kernel_xiaomi_cannon'
+          ref: '506306ef3ae59f48a4ac7564b52e62bee48ce26b'
           fetch-depth: 0
           path: kernel_tmp
 
@@ -252,7 +253,9 @@ jobs:
           tag_name: ${{ steps.tag.outputs.tag }}
           release_name: "Cannon Kernel by GinHalion - ${{ steps.tag.outputs.tag }}"
           body: |
-            Stock | KernelSU v0.9.5 LKM + Manager APK
+            Cannon 4.14.186 stock-base at 506306ef3ae59f48a4ac7564b52e62bee48ce26b
+
+            Stock baseline | KernelSU v0.9.5 + Manager APK
             
             构建环境: Ubuntu 22.04
             
