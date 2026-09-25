@@ -107,16 +107,34 @@ jobs:
           sed -i 's/mtk-vcu\.o mtk_vcodec_mem\.o/mtk_vcu.o mtk_vcodec_mem.o/' "$vcu_makefile"
 
           if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
-            mkdir -p /cannon/toolchains/clang /cannon/toolchains/gcc64 /cannon/toolchains/gcc32
-            curl -fL --retry 5 \
+            fetch_tar() {
+              # fetch_tar <url> <destdir> <verify-path>: robust download with
+              # integrity check and retries (googlesource truncates streams).
+              local url="$1" dest="$2" verify="$3" attempt
+              for attempt in 1 2 3 4 5; do
+                rm -rf "$dest"; mkdir -p "$dest"
+                curl -fL --retry 5 --retry-all-errors -o /tmp/kbuild-tgz "$url" || true
+                if gzip -t /tmp/kbuild-tgz 2>/dev/null \
+                   && tar -xzf /tmp/kbuild-tgz -C "$dest" \
+                   && [ -e "$dest/$verify" ]; then
+                  echo "fetched ok: $url (attempt $attempt)"
+                  return 0
+                fi
+                echo "attempt $attempt failed for $url"
+                sleep 5
+              done
+              return 1
+            }
+            fetch_tar \
               https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-11.0.0_r1/clang-r383902.tar.gz \
-              | tar -xz -C /cannon/toolchains/clang
-            curl -fL --retry 5 \
+              /cannon/toolchains/clang bin/clang
+            fetch_tar \
               https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz \
-              | tar -xz -C /cannon/toolchains/gcc64
-            curl -fL --retry 5 \
+              /cannon/toolchains/gcc64 bin/aarch64-linux-android-gcc
+            fetch_tar \
               https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz \
-              | tar -xz -C /cannon/toolchains/gcc32
+              /cannon/toolchains/gcc32 bin/arm-linux-androideabi-gcc
+            /cannon/toolchains/clang/bin/clang --version | head -1
           fi
 
           ln -sfn /cannon/toolchains/clang /cannon/clang
