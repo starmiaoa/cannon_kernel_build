@@ -171,6 +171,11 @@ jobs:
           cd /cannon/kernel
           python3 /cannon/apply_ksu_hooks.py
           grep -c ksu_handle fs/exec.c fs/open.c fs/stat.c
+          # Commit the vendored driver + hooks so the tree is clean, otherwise
+          # setlocalversion appends "+" and the release string stops matching
+          # the vendor modules' vermagic.
+          git add -A
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "Vendor KernelSU + manual hooks"
 
       - name: Build SukiSU kernel
         run: |
