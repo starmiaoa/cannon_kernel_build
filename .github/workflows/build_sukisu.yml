@@ -1,0 +1,176 @@
+name: Cannon SukiSU kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout build files
+        uses: actions/checkout@v4
+
+      - name: Checkout Xiaomi cannon-r-oss source
+        uses: actions/checkout@v4
+        with:
+          repository: MiCode/Xiaomi_Kernel_OpenSource
+          ref: cannon-r-oss
+          fetch-depth: 1
+          path: kernel_tmp
+
+      - name: Checkout matching newer MediaTek subsystems
+        uses: actions/checkout@v4
+        with:
+          repository: xiaomi-mt6853-devs/android_kernel_xiaomi_cannon
+          ref: lineage-20
+          fetch-depth: 1
+          path: community_tmp
+          sparse-checkout: |
+            drivers/misc/mediatek/teei/400
+            drivers/misc/mediatek/gpu
+            drivers/misc/mediatek/trusted_mem
+            drivers/misc/mediatek/base/power/gpufreq_v1
+            drivers/misc/mediatek/base/power/include/gpufreq_v1
+            drivers/staging/android/ion/mtk
+            drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi \
+            bison build-essential ccache flex libelf-dev libssl-dev lld unzip zip
+
+      - name: Restore toolchain cache
+        uses: actions/cache@v4
+        with:
+          path: /cannon/toolchains
+          key: cannon-aosp-clang-r383902-gcc49-v1
+
+      - name: Prepare source, toolchains and AnyKernel3
+        run: |
+          set -euxo pipefail
+          sudo mkdir -p /cannon
+          sudo chown "$USER:$USER" /cannon
+          mv kernel_tmp /cannon/kernel
+          mkdir -p /cannon/toolchains
+
+          # The shipping configuration uses newer MediaTek components than
+          # MiCode's cannon-r-oss drop. Import the exact versions from the
+          # same-device community tree instead of mixing individual headers.
+          cp -a community_tmp/drivers/misc/mediatek/teei/400 \
+            /cannon/kernel/drivers/misc/mediatek/teei/
+          rm -rf /cannon/kernel/drivers/misc/mediatek/gpu
+          cp -a community_tmp/drivers/misc/mediatek/gpu \
+            /cannon/kernel/drivers/misc/mediatek/
+          rm -rf /cannon/kernel/drivers/misc/mediatek/base/power/gpufreq_v1
+          cp -a community_tmp/drivers/misc/mediatek/base/power/gpufreq_v1 \
+            /cannon/kernel/drivers/misc/mediatek/base/power/
+          rm -rf /cannon/kernel/drivers/misc/mediatek/base/power/include/gpufreq_v1
+          cp -a community_tmp/drivers/misc/mediatek/base/power/include/gpufreq_v1 \
+            /cannon/kernel/drivers/misc/mediatek/base/power/include/
+          rm -rf /cannon/kernel/drivers/misc/mediatek/trusted_mem
+          cp -a community_tmp/drivers/misc/mediatek/trusted_mem \
+            /cannon/kernel/drivers/misc/mediatek/
+          cp community_tmp/drivers/staging/android/ion/mtk/ion_sec_heap.c \
+            /cannon/kernel/drivers/staging/android/ion/mtk/ion_sec_heap.c
+          cp community_tmp/drivers/staging/android/ion/mtk/ion_sec_heap.h \
+            /cannon/kernel/drivers/staging/android/ion/mtk/ion_sec_heap.h
+
+          # MiCode also omitted this generated FocalTech firmware include.
+          mkdir -p /cannon/kernel/drivers/input/touchscreen/fts8719/include/firmware
+          cp community_tmp/drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i \
+            /cannon/kernel/drivers/input/touchscreen/fts8719/include/firmware/fw_sample.i
+
+          # Fix the 64-bit offset cast carried by the public vendor drop. The
+          # same-device AOSP-on-Cannon tree contains this exact correction.
+          freqhop=/cannon/kernel/drivers/misc/mediatek/freqhopping/mt6853/mtk_freqhopping_mcupm.c
+          grep -q 'g_reg_tr = g_fhctl_base + (unsigned int)reg_tr;' "$freqhop"
+          sed -i 's/(unsigned int)reg_tr/(unsigned long)reg_tr/' "$freqhop"
+
+          # Newer trusted-memory uses command 35, while the official header
+          # retains command 30 needed by other cannon vendor components.
+          ta_mem=/cannon/kernel/drivers/misc/mediatek/geniezone/public/tz_cross/ta_mem.h
+          grep -q 'TZCMD_MEM_CONFIG_CHUNKMEM_INFO_ION 34' "$ta_mem"
+          sed -i '/TZCMD_MEM_CONFIG_CHUNKMEM_INFO_ION 34/a #define TZCMD_MEM_Query_SECUREMEM_INFO 35' "$ta_mem"
+
+          # %512s also writes a trailing NUL. Keep the full payload length and
+          # provide the extra byte, as done by newer MediaTek kernel trees.
+          udi=/cannon/kernel/drivers/misc/mediatek/udi/udi_v3/mtk_udi.c
+          grep -Fq 'recv_char[2][UDI_FIFOSIZE * 2];' "$udi"
+          sed -i 's/recv_char\[2\]\[UDI_FIFOSIZE \* 2\];/recv_char[2][UDI_FIFOSIZE * 2 + 1];/' "$udi"
+
+          # The public VCU Makefile places mtk_vcodec_mem.o in both a
+          # composite object and obj-y. Use the corrected one-object-each rule.
+          vcu_makefile=/cannon/kernel/drivers/media/platform/mtk-vcu/Makefile
+          grep -q '^mtk-vcu-y += mtk_vcu.o' "$vcu_makefile"
+          sed -i '/^mtk-vcu-y += mtk_vcu.o/,/^$/d' "$vcu_makefile"
+          sed -i 's/mtk-vcu\.o mtk_vcodec_mem\.o/mtk_vcu.o mtk_vcodec_mem.o/' "$vcu_makefile"
+
+          if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
+            mkdir -p /cannon/toolchains/clang /cannon/toolchains/gcc64 /cannon/toolchains/gcc32
+            curl -fL --retry 5 \
+              https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-11.0.0_r1/clang-r383902.tar.gz \
+              | tar -xz -C /cannon/toolchains/clang
+            curl -fL --retry 5 \
+              https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz \
+              | tar -xz -C /cannon/toolchains/gcc64
+            curl -fL --retry 5 \
+              https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz \
+              | tar -xz -C /cannon/toolchains/gcc32
+          fi
+
+          ln -sfn /cannon/toolchains/clang /cannon/clang
+          ln -sfn /cannon/toolchains/gcc64 /cannon/gcc64
+          ln -sfn /cannon/toolchains/gcc32 /cannon/gcc32
+          mkdir -p /cannon/cross64
+          for tool in /usr/bin/aarch64-linux-gnu-*; do
+            ln -sfn "$tool" "/cannon/cross64/$(basename "$tool")"
+          done
+          ln -sfn /usr/bin/aarch64-linux-gnu-as /cannon/cross64/as
+
+          curl -fL --retry 5 \
+            https://github.com/GTian5418/AnyKernel3/archive/refs/heads/cannon.zip \
+            -o /tmp/anykernel.zip
+          unzip -q /tmp/anykernel.zip -d /tmp/anykernel
+          mkdir -p /cannon/Anykernel3
+          cp -a /tmp/anykernel/*/. /cannon/Anykernel3/
+
+          # Vendor SukiSU Ultra (kernel side) pinned to the manager version
+          # already installed on the device, then insert the tracepoint hooks.
+          cd /cannon/kernel
+          curl -fsSL --retry 5 \
+            https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh \
+            | bash -s v4.2.0
+          test -f drivers/kernelsu/ksu_trace.h
+
+      - name: Insert SukiSU tracepoint hooks
+        run: |
+          set -euxo pipefail
+          cp patches/apply_sukisu_hooks.py /cannon/
+          cp configs/sukisu-originos4.config /cannon/
+          cp build_sukisu.sh /cannon/
+          chmod +x /cannon/build_sukisu.sh
+          cd /cannon/kernel
+          python3 apply_sukisu_hooks.py
+          grep -c ksu_trace fs/exec.c fs/open.c fs/read_write.c fs/stat.c drivers/input/input.c
+
+      - name: Build SukiSU kernel
+        run: |
+          set -o pipefail
+          /cannon/build_sukisu.sh 2>&1 | tee /cannon/build-sukisu.log
+
+      - name: Upload SukiSU kernel artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cannon-SukiSU-OriginOS4
+          if-no-files-found: warn
+          path: |
+            /cannon/Cannon-SukiSU-OriginOS4.zip
+            /cannon/out/arch/arm64/boot/Image.gz
+            /cannon/out/Module.symvers
+            /cannon/out/System.map
+            /cannon/sukisu-result.config
+            /cannon/sukisu-config.diff
+            /cannon/kernelrelease.txt
+            /cannon/build-sukisu.log
