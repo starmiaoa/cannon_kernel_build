@@ -149,25 +149,28 @@ jobs:
           mkdir -p /cannon/Anykernel3
           cp -a /tmp/anykernel/*/. /cannon/Anykernel3/
 
-          # Vendor SukiSU Ultra (kernel side). v3.2.0 is the last release with
-          # the flat layout (drivers/kernelsu/ksu_trace.h) that the tracepoint
-          # hook integration targets.
-          cd /cannon/kernel
-          curl -fsSL --retry 5 \
-            https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh \
-            | bash -s v3.2.0
-          test -f drivers/kernelsu/ksu_trace.h
+          # Vendor KernelSU v0.9.5 (4.14-adapted) from the gtcock cannon tree,
+          # which carries the selinux/procfs compat fixes and the manual-hook
+          # ksu_handle_* exports this integration calls into.
+          git clone --depth 1 --branch ksu --filter=blob:none --sparse \
+            https://github.com/gtcock/android_kernel_xiaomi_cannon /cannon/gtcock_tmp
+          cd /cannon/gtcock_tmp
+          git sparse-checkout set drivers/kernelsu
+          test -f drivers/kernelsu/ksu.c
+          cp -a drivers/kernelsu /cannon/kernel/drivers/kernelsu
+          printf '\nobj-$(CONFIG_KSU) += kernelsu/\n' >> /cannon/kernel/drivers/Makefile
+          sed -i '/endmenu/i\source "drivers/kernelsu/Kconfig"' /cannon/kernel/drivers/Kconfig
 
-      - name: Insert SukiSU tracepoint hooks
+      - name: Insert KernelSU manual hooks
         run: |
           set -euxo pipefail
-          cp patches/apply_sukisu_hooks.py /cannon/
+          cp patches/apply_ksu_hooks.py /cannon/
           cp configs/sukisu-originos4.config /cannon/
           cp build_sukisu.sh /cannon/
           chmod +x /cannon/build_sukisu.sh
           cd /cannon/kernel
-          python3 /cannon/apply_sukisu_hooks.py
-          grep -c ksu_trace fs/exec.c fs/open.c fs/read_write.c fs/stat.c drivers/input/input.c
+          python3 /cannon/apply_ksu_hooks.py
+          grep -c ksu_handle fs/exec.c fs/open.c fs/stat.c
 
       - name: Build SukiSU kernel
         run: |

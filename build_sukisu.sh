@@ -38,11 +38,9 @@ make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
 "$KERNEL/scripts/config" --file "$OUT_DIR/.config" --enable NFC
 "$KERNEL/scripts/config" --file "$OUT_DIR/.config" --enable NFC_PN553_DEVICES
 
-# Re-assert the SukiSU options after olddefconfig in case the vendor Kconfig
-# ordering dropped them.
+# Re-assert the KernelSU option after olddefconfig in case the vendor Kconfig
+# ordering dropped it.
 "$KERNEL/scripts/config" --file "$OUT_DIR/.config" --enable KSU
-"$KERNEL/scripts/config" --file "$OUT_DIR/.config" --enable KSU_TRACEPOINT_HOOK
-"$KERNEL/scripts/config" --file "$OUT_DIR/.config" --disable KSU_MANUAL_HOOK
 make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
 
 cp "$OUT_DIR/.config" "$TOOLCHAIN/sukisu-result.config"
