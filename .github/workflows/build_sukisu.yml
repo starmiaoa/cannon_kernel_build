@@ -166,7 +166,7 @@ jobs:
           cp build_sukisu.sh /cannon/
           chmod +x /cannon/build_sukisu.sh
           cd /cannon/kernel
-          python3 apply_sukisu_hooks.py
+          python3 /cannon/apply_sukisu_hooks.py
           grep -c ksu_trace fs/exec.c fs/open.c fs/read_write.c fs/stat.c drivers/input/input.c
 
       - name: Build SukiSU kernel
