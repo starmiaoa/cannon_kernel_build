@@ -106,6 +106,15 @@ jobs:
           sed -i '/^mtk-vcu-y += mtk_vcu.o/,/^$/d' "$vcu_makefile"
           sed -i 's/mtk-vcu\.o mtk_vcodec_mem\.o/mtk_vcu.o mtk_vcodec_mem.o/' "$vcu_makefile"
 
+          # The 2023 GenieZone TEE signals the gz-trusty check task before all
+          # vrings are registered; the public drop dereferences the bare vq
+          # pointer and panics at 0.7s (vring_interrupt NULL deref, seen in
+          # ramoops). Guard it exactly like the newer MediaTek trees do.
+          gzv=/cannon/kernel/drivers/misc/mediatek/geniezone/gz-trusty/trusty-virtio.c
+          grep -q 'vring_interrupt(0, tvdev->vrings\[i\].vq);' "$gzv"
+          sed -i 's|^\t\t\tvring_interrupt(0, tvdev->vrings\[i\].vq);$|\t\t\tif (tvdev->vrings[i].vq)\n\t\t\t\tvring_interrupt(0, tvdev->vrings[i].vq);|' "$gzv"
+          grep -q 'if (tvdev->vrings\[i\].vq)' "$gzv"
+
           if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
             # Only clang is needed: CROSS_COMPILE uses the distro binutils
             # (symlinked into /cannon/cross64 by the build script).
