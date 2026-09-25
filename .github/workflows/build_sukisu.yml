@@ -124,23 +124,7 @@ jobs:
 
           # clkdbg/cmdq(v3)/eccci call register_devapc_vio_callback without
           # guards; provide a no-op shim so they link with devapc disabled.
-          cat > /cannon/kernel/drivers/misc/mediatek/devapc_stub.c <<'EOF'
-#include <linux/kernel.h>
-#include <linux/list.h>
-
-struct devapc_vio_callbacks;
-
-#ifndef CONFIG_MTK_DEVAPC
-/*
- * No-op shim: the real registration lives in the devapc driver, which is
- * disabled here because the 2021 code BUGs on 2023 TINYSYS violations.
- */
-void register_devapc_vio_callback(struct devapc_vio_callbacks *viocb)
-{
-	INIT_LIST_HEAD(&viocb->list);
-}
-#endif
-EOF
+          cp patches/devapc_stub.c /cannon/kernel/drivers/misc/mediatek/devapc_stub.c
           grep -q "devapc_stub.o" /cannon/kernel/drivers/misc/mediatek/Makefile || \
             printf "obj-y += devapc_stub.o\n" >> /cannon/kernel/drivers/misc/mediatek/Makefile
 
