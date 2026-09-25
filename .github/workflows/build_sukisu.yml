@@ -115,6 +115,13 @@ jobs:
           sed -i 's|^\t\t\tvring_interrupt(0, tvdev->vrings\[i\].vq);$|\t\t\tif (tvdev->vrings[i].vq)\n\t\t\t\tvring_interrupt(0, tvdev->vrings[i].vq);|' "$gzv"
           grep -q 'if (tvdev->vrings\[i\].vq)' "$gzv"
 
+          # DEVAPC must be disablable: the 2021 driver BUGs on 2023 TINYSYS
+          # bus violations at 14.5s (see ramoops). Drop the platform select
+          # that force-enables it, then the config can keep it off.
+          kplat=/cannon/kernel/arch/arm64/Kconfig.platforms
+          grep -q 'select DEVAPC_MT6853' "$kplat"
+          sed -i '/select DEVAPC_MT6853/d' "$kplat"
+
           if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
             # Only clang is needed: CROSS_COMPILE uses the distro binutils
             # (symlinked into /cannon/cross64 by the build script).

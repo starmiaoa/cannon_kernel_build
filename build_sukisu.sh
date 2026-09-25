@@ -41,6 +41,11 @@ make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
 # Re-assert the KernelSU option after olddefconfig in case the vendor Kconfig
 # ordering dropped it.
 "$KERNEL/scripts/config" --file "$OUT_DIR/.config" --enable KSU
+# Keep DEVAPC off (2021 driver BUGs on 2023 TINYSYS violations).
+"$KERNEL/scripts/config" --file "$OUT_DIR/.config" --disable MTK_DEVAPC
+"$KERNEL/scripts/config" --file "$OUT_DIR/.config" --disable DEVAPC_MT6853
+"$KERNEL/scripts/config" --file "$OUT_DIR/.config" --disable DEVAPC_ARCH_V2
+"$KERNEL/scripts/config" --file "$OUT_DIR/.config" --disable DEVAPC_MMAP_DEBUG
 make -C "$KERNEL" O="$OUT_DIR" "${COMMON_ARGS[@]}" olddefconfig
 
 cp "$OUT_DIR/.config" "$TOOLCHAIN/sukisu-result.config"
