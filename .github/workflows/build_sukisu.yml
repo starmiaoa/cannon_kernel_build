@@ -135,12 +135,13 @@ jobs:
           mkdir -p /cannon/Anykernel3
           cp -a /tmp/anykernel/*/. /cannon/Anykernel3/
 
-          # Vendor SukiSU Ultra (kernel side) pinned to the manager version
-          # already installed on the device, then insert the tracepoint hooks.
+          # Vendor SukiSU Ultra (kernel side). v3.2.0 is the last release with
+          # the flat layout (drivers/kernelsu/ksu_trace.h) that the tracepoint
+          # hook integration targets.
           cd /cannon/kernel
           curl -fsSL --retry 5 \
             https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh \
-            | bash -s v4.2.0
+            | bash -s v3.2.0
           test -f drivers/kernelsu/ksu_trace.h
 
       - name: Insert SukiSU tracepoint hooks
