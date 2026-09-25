@@ -12,6 +12,7 @@ struct devapc_vio_callbacks;
  */
 void register_devapc_vio_callback(struct devapc_vio_callbacks *viocb)
 {
-	INIT_LIST_HEAD(&viocb->list);
+	/* registration is a no-op: nothing will ever call the callback */
+	(void)viocb;
 }
 #endif
