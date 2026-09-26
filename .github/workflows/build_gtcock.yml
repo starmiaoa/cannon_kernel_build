@@ -1,0 +1,108 @@
+name: Cannon KSU kernel (gtcock 4.14.336)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout build files
+        uses: actions/checkout@v4
+
+      - name: Checkout gtcock cannon kernel with KernelSU v0.9.5
+        uses: actions/checkout@v4
+        with:
+          repository: gtcock/android_kernel_xiaomi_cannon
+          ref: ksu
+          fetch-depth: 1
+          path: kernel_tmp
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi \
+            bison build-essential ccache flex libelf-dev libssl-dev lld unzip zip
+
+      - name: Restore toolchain cache
+        uses: actions/cache@v4
+        with:
+          path: /cannon/toolchains
+          key: cannon-aosp-clang-r383902-gcc49-v1
+
+      - name: Prepare toolchains
+        run: |
+          set -euxo pipefail
+          sudo mkdir -p /cannon
+          sudo chown "$USER:$USER" /cannon
+          mkdir -p /cannon/toolchains
+
+          if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
+            fetch_tar() {
+              local url="$1" dest="$2" verify="$3" attempt
+              for attempt in 1 2 3 4 5; do
+                rm -rf "$dest"; mkdir -p "$dest"
+                curl -fL --retry 5 --retry-all-errors -o /tmp/kbuild-tgz "$url" || true
+                if gzip -t /tmp/kbuild-tgz 2>/dev/null \
+                   && tar -xzf /tmp/kbuild-tgz -C "$dest" \
+                   && [ -e "$dest/$verify" ]; then
+                  echo "fetched ok: $url (attempt $attempt)"
+                  return 0
+                fi
+                echo "attempt $attempt failed for $url"
+                sleep 5
+              done
+              return 1
+            }
+            fetch_tar \
+              https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-11.0.0_r1/clang-r383902.tar.gz \
+              /cannon/toolchains/clang bin/clang
+            /cannon/toolchains/clang/bin/clang --version | head -1
+          fi
+
+          ln -sfn /cannon/toolchains/clang /cannon/clang
+          mkdir -p /cannon/cross64
+          for tool in /usr/bin/aarch64-linux-gnu-*; do
+            ln -sfn "$tool" "/cannon/cross64/$(basename "$tool")"
+          done
+          ln -sfn /usr/bin/aarch64-linux-gnu-as /cannon/cross64/as
+          # Neutralize setlocalversion so the release string is deterministic.
+          mv /cannon/kernel/.git /cannon/kernel_git_backup
+
+      - name: Build KernelSU kernel
+        run: |
+          set -o pipefail
+          KERNEL=/cannon/kernel
+          OUT=/cannon/out
+          export PATH="/cannon/clang/bin:$PATH"
+          export KCFLAGS="-fno-builtin-stpcpy"
+          ARGS=(ARCH=arm64 O=$OUT CLANG_TRIPLE=aarch64-linux-gnu- \
+                CROSS_COMPILE=/cannon/cross64/aarch64-linux-gnu- \
+                CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+                CC=clang LD=ld.lld AR=llvm-ar NM=llvm-nm \
+                OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip)
+          mkdir -p /cannon/ccache
+          export CCACHE_DIR=/cannon/ccache
+          ccache -M 50G >/dev/null || true
+          make -C "$KERNEL" "${ARGS[@]}" cannon_defconfig
+          make -C "$KERNEL" "${ARGS[@]}" -s kernelrelease | tee /cannon/kernelrelease.txt
+          grep -E '^CONFIG_KSU' "$OUT/.config" || true
+          make -C "$KERNEL" "${ARGS[@]}" -k -j"$(nproc)" Image.gz dtbs 2>&1 | tee /cannon/build-gtcock.log
+          test -s "$OUT/arch/arm64/boot/Image.gz"
+          ls -la "$OUT/arch/arm64/boot/"
+
+      - name: Upload KSU kernel artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cannon-KSU-gtcock
+          if-no-files-found: warn
+          path: |
+            /cannon/out/arch/arm64/boot/Image.gz
+            /cannon/out/arch/arm64/boot/dts/mediatek/
+            /cannon/out/arch/arm64/boot/dtb
+            /cannon/out/Module.symvers
+            /cannon/out/System.map
+            /cannon/out/.config
+            /cannon/kernelrelease.txt
+            /cannon/build-gtcock.log
