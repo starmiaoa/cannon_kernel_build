@@ -96,6 +96,14 @@ jobs:
             sed -i '/select DEVAPC_MT6853/d' "$kplat"
           fi
 
+          # Same VCU Makefile bug as the public drop: mtk_vcodec_mem.o listed
+          # both inside the composite object and as obj-y -> duplicate symbols.
+          vcu_makefile=/cannon/kernel/drivers/media/platform/mtk-vcu/Makefile
+          if [ -f "$vcu_makefile" ] && grep -q '^mtk-vcu-y += mtk_vcu.o' "$vcu_makefile"; then
+            sed -i '/^mtk-vcu-y += mtk_vcu.o/,/^$/d' "$vcu_makefile"
+            sed -i 's/mtk-vcu\.o mtk_vcodec_mem\.o/mtk_vcu.o mtk_vcodec_mem.o/' "$vcu_makefile"
+          fi
+
           # Vendor KernelSU v0.9.5 (4.14-adapted) from the gtcock cannon tree.
           git clone --depth 1 --branch ksu --filter=blob:none --sparse \
             https://github.com/gtcock/android_kernel_xiaomi_cannon /cannon/gtcock_tmp
