@@ -35,6 +35,7 @@ jobs:
           set -euxo pipefail
           sudo mkdir -p /cannon
           sudo chown "$USER:$USER" /cannon
+          mv kernel_tmp /cannon/kernel
           mkdir -p /cannon/toolchains
 
           if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
