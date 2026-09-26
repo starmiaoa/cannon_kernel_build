@@ -108,7 +108,8 @@ jobs:
 
           # clkdbg/cmdq(v3)/eccci call register_devapc_vio_callback without
           # guards; provide a no-op shim so they link with devapc disabled.
-          cp patches/devapc_stub.c /cannon/kernel/drivers/misc/mediatek/devapc_stub.c
+          cp "$GITHUB_WORKSPACE/patches/devapc_stub.c" \
+            /cannon/kernel/drivers/misc/mediatek/devapc_stub.c
           grep -q "devapc_stub.o" /cannon/kernel/drivers/misc/mediatek/Makefile || \
             printf "obj-y += devapc_stub.o\n" >> /cannon/kernel/drivers/misc/mediatek/Makefile
 
