@@ -1,0 +1,146 @@
+name: Cannon SukiSU kernel (wosnxn tree)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout build files
+        uses: actions/checkout@v4
+
+      - name: Checkout wosnxn123 cannon kernel (cannon-r-oss + vendor-boot fixes)
+        uses: actions/checkout@v4
+        with:
+          repository: wosnxn123/android_kernel_xiaomi_cannon
+          ref: main
+          fetch-depth: 1
+          path: kernel_tmp
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi \
+            bison build-essential ccache flex libelf-dev libssl-dev lld unzip zip
+
+      - name: Restore toolchain cache
+        uses: actions/cache@v4
+        with:
+          path: /cannon/toolchains
+          key: cannon-aosp-clang-r383902-gcc49-v1
+
+      - name: Prepare source, toolchains and AnyKernel3
+        run: |
+          set -euxo pipefail
+          sudo mkdir -p /cannon
+          sudo chown "$USER:$USER" /cannon
+          mv kernel_tmp /cannon/kernel
+          mkdir -p /cannon/toolchains
+
+          if [ ! -x /cannon/toolchains/clang/bin/clang ]; then
+            # Only clang is needed: CROSS_COMPILE uses the distro binutils.
+            fetch_tar() {
+              local url="$1" dest="$2" verify="$3" attempt
+              for attempt in 1 2 3 4 5; do
+                rm -rf "$dest"; mkdir -p "$dest"
+                curl -fL --retry 5 --retry-all-errors -o /tmp/kbuild-tgz "$url" || true
+                if gzip -t /tmp/kbuild-tgz 2>/dev/null \
+                   && tar -xzf /tmp/kbuild-tgz -C "$dest" \
+                   && [ -e "$dest/$verify" ]; then
+                  echo "fetched ok: $url (attempt $attempt)"
+                  return 0
+                fi
+                echo "attempt $attempt failed for $url"
+                sleep 5
+              done
+              return 1
+            }
+            fetch_tar \
+              https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-11.0.0_r1/clang-r383902.tar.gz \
+              /cannon/toolchains/clang bin/clang
+            /cannon/toolchains/clang/bin/clang --version | head -1
+          fi
+
+          ln -sfn /cannon/toolchains/clang /cannon/clang
+          ln -sfn /cannon/toolchains/gcc64 /cannon/gcc64
+          ln -sfn /cannon/toolchains/gcc32 /cannon/gcc32
+          mkdir -p /cannon/cross64
+          for tool in /usr/bin/aarch64-linux-gnu-*; do
+            ln -sfn "$tool" "/cannon/cross64/$(basename "$tool")"
+          done
+          ln -sfn /usr/bin/aarch64-linux-gnu-as /cannon/cross64/as
+
+          curl -fL --retry 5 \
+            https://github.com/GTian5418/AnyKernel3/archive/refs/heads/cannon.zip \
+            -o /tmp/anykernel.zip
+          unzip -q /tmp/anykernel.zip -d /tmp/anykernel
+          mkdir -p /cannon/Anykernel3
+          cp -a /tmp/anykernel/*/. /cannon/Anykernel3/
+
+          # gz-trusty: the 2023 GenieZone TEE signals the check task before
+          # all vrings are registered; guard the bare vq deref (ramoops-verified
+          # bootloop cause). Conditional: skip if the tree lacks the file.
+          gzv=/cannon/kernel/drivers/misc/mediatek/geniezone/gz-trusty/trusty-virtio.c
+          if [ -f "$gzv" ] && grep -q 'vring_interrupt(0, tvdev->vrings\[i\].vq);' "$gzv"; then
+            sed -i 's|^\t\t\tvring_interrupt(0, tvdev->vrings\[i\].vq);$|\t\t\tif (tvdev->vrings[i].vq)\n\t\t\t\tvring_interrupt(0, tvdev->vrings[i].vq);|' "$gzv"
+            grep -q 'if (tvdev->vrings\[i\].vq)' "$gzv"
+          else
+            echo "gz-trusty fix skipped (anchor not present)"
+          fi
+
+          # DEVAPC must be disablable: the 2021 driver BUGs on 2023 TINYSYS
+          # bus violations. Drop the platform select that force-enables it.
+          kplat=/cannon/kernel/arch/arm64/Kconfig.platforms
+          if grep -q 'select DEVAPC_MT6853' "$kplat"; then
+            sed -i '/select DEVAPC_MT6853/d' "$kplat"
+          fi
+
+          # Vendor KernelSU v0.9.5 (4.14-adapted) from the gtcock cannon tree.
+          git clone --depth 1 --branch ksu --filter=blob:none --sparse \
+            https://github.com/gtcock/android_kernel_xiaomi_cannon /cannon/gtcock_tmp
+          cd /cannon/gtcock_tmp
+          git sparse-checkout set drivers/kernelsu
+          test -f drivers/kernelsu/ksu.c
+          cp -a drivers/kernelsu /cannon/kernel/drivers/kernelsu
+          printf '\nobj-$(CONFIG_KSU) += kernelsu/\n' >> /cannon/kernel/drivers/Makefile
+          sed -i '/endmenu/i\source "drivers/kernelsu/Kconfig"' /cannon/kernel/drivers/Kconfig
+
+          # clkdbg/cmdq(v3)/eccci call register_devapc_vio_callback without
+          # guards; provide a no-op shim so they link with devapc disabled.
+          cp patches/devapc_stub.c /cannon/kernel/drivers/misc/mediatek/devapc_stub.c
+          grep -q "devapc_stub.o" /cannon/kernel/drivers/misc/mediatek/Makefile || \
+            printf "obj-y += devapc_stub.o\n" >> /cannon/kernel/drivers/misc/mediatek/Makefile
+
+      - name: Insert KernelSU manual hooks
+        run: |
+          set -euxo pipefail
+          cp patches/apply_ksu_hooks.py /cannon/
+          cp build_wosnxn.sh /cannon/
+          chmod +x /cannon/build_wosnxn.sh
+          cd /cannon/kernel
+          python3 /cannon/apply_ksu_hooks.py
+          grep -c ksu_handle fs/exec.c fs/open.c fs/stat.c
+          # Neutralize setlocalversion: with the git directory moved aside the
+          # release string cannot gain a "+" and matches the vendor vermagic.
+          mv /cannon/kernel/.git /cannon/kernel_git_backup
+
+      - name: Build SukiSU kernel (wosnxn base)
+        run: |
+          set -o pipefail
+          /cannon/build_wosnxn.sh 2>&1 | tee /cannon/build-wosnxn.log
+
+      - name: Upload SukiSU kernel artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cannon-SukiSU-Wosnxn
+          if-no-files-found: warn
+          path: |
+            /cannon/Cannon-SukiSU-Wosnxn.zip
+            /cannon/out/arch/arm64/boot/Image.gz
+            /cannon/out/Module.symvers
+            /cannon/out/System.map
+            /cannon/wosnxn-result.config
+            /cannon/kernelrelease.txt
+            /cannon/build-wosnxn.log
